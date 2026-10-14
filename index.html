@@ -133,10 +133,10 @@
                             <th class="py-3.5 px-4 text-center w-24">학년</th>
                             <th class="py-3.5 px-4 text-center w-24">반</th>
                             <th class="py-3.5 px-6 min-w-[160px]">참가자 명</th>
-                            <th class="py-3.5 px-4 text-center min-w-[100px]">1차 시기</th>
-                            <th class="py-3.5 px-4 text-center min-w-[100px]">2차 시기</th>
-                            <th class="py-3.5 px-4 text-center min-w-[100px]">3차 시기</th>
-                            <th class="py-3.5 px-4 text-center min-w-[130px] bg-blue-950/40 text-blue-300 font-bold">최고기록(BEST)</th>
+                            <th class="py-3.5 px-4 text-center min-w-[110px]">1차 시기</th>
+                            <th class="py-3.5 px-4 text-center min-w-[110px]">2차 시기</th>
+                            <th class="py-3.5 px-4 text-center min-w-[110px]">3차 시기</th>
+                            <th class="py-3.5 px-4 text-center min-w-[140px] bg-blue-950/40 text-blue-300 font-bold">최고기록(BEST)</th>
                         </tr>
                     </thead>
                     <tbody id="preliminaryTableBody" class="divide-y divide-slate-700/50 text-slate-300">
@@ -154,7 +154,7 @@
                         <i class="fa-solid fa-award text-amber-400"></i>
                         <span>소사벌초 3-3-3 본선전 순위보드</span>
                     </h3>
-                    <p class="text-xs text-slate-400 mt-0.5">1R(1,2차) 및 2R(1,2차) 기록 종합 정렬 (단위: 초, 소수점 3자리)</p>
+                    <p class="text-xs text-slate-400 mt-0.5">1R 및 2R 기록 종합 정렬 (단위: 초, 소수점 3자리)</p>
                 </div>
             </div>
             <div class="overflow-x-auto table-scrollbar">
@@ -165,11 +165,11 @@
                             <th class="py-3.5 px-4 text-center w-24">학년</th>
                             <th class="py-3.5 px-4 text-center w-24">반</th>
                             <th class="py-3.5 px-6 min-w-[160px]">참가자 명</th>
-                            <th class="py-3.5 px-3 text-center min-w-[95px]">1R-1차시기</th>
-                            <th class="py-3.5 px-3 text-center min-w-[95px]">1R-2차시기</th>
-                            <th class="py-3.5 px-3 text-center min-w-[95px]">2R-1차시기</th>
-                            <th class="py-3.5 px-3 text-center min-w-[95px]">2R-2차시기</th>
-                            <th class="py-3.5 px-4 text-center min-w-[130px] bg-amber-950/40 text-amber-300 font-bold">최고기록(BEST)</th>
+                            <th class="py-3.5 px-3 text-center min-w-[110px]">1R-1차 시기</th>
+                            <th class="py-3.5 px-3 text-center min-w-[110px]">1R-2차 시기</th>
+                            <th class="py-3.5 px-3 text-center min-w-[110px]">2R-1차 시기</th>
+                            <th class="py-3.5 px-3 text-center min-w-[110px]">2R-2차 시기</th>
+                            <th class="py-3.5 px-4 text-center min-w-[140px] bg-amber-950/40 text-amber-300 font-bold">최고기록(BEST)</th>
                             <th class="py-3.5 px-4 text-center min-w-[140px]">메달/결과</th>
                         </tr>
                     </thead>
@@ -316,6 +316,7 @@
         let currentTab = 'preliminary';
         let customPreliminaryUrl = localStorage.getItem('sport_stacking_prelim_url') || '';
         let customFinalUrl = localStorage.getItem('sport_stacking_final_url') || '';
+        let autoSyncInterval = null;
 
         window.onload = function() {
             if (customPreliminaryUrl || customFinalUrl) {
@@ -326,6 +327,14 @@
                 renderTables();
                 showStatus("구글 스프레드시트 URL이 등록되지 않았습니다. [스프레드시트 연동 설정]을 통해 예선 및 본선 시트 URL을 입력하세요.", "error");
             }
+
+            // Start auto-sync interval every 15 seconds for real-time synchronization
+            if (autoSyncInterval) clearInterval(autoSyncInterval);
+            autoSyncInterval = setInterval(() => {
+                if (customPreliminaryUrl || customFinalUrl) {
+                    fetchSheetData(true); // background silent fetch
+                }
+            }, 15000);
         };
 
         function openConfigModal() {
@@ -353,14 +362,18 @@
             fetchSheetData();
         }
 
-        async function fetchSheetData() {
+        async function fetchSheetData(isBackground = false) {
             const refreshIcon = document.getElementById('refreshIcon');
-            refreshIcon.classList.add('fa-spin');
-            showStatus("구글 스프레드시트에서 예선 및 본선 데이터를 불러오는 중...", "loading");
+            if (!isBackground) {
+                refreshIcon.classList.add('fa-spin');
+                showStatus("구글 스프레드시트에서 예선 및 본선 데이터를 불러오는 중...", "loading");
+            }
 
             if (!customPreliminaryUrl && !customFinalUrl) {
-                refreshIcon.classList.remove('fa-spin');
-                showStatus("설정된 구글 스프레드시트 URL이 없습니다.", "error");
+                if (!isBackground) {
+                    refreshIcon.classList.remove('fa-spin');
+                    showStatus("설정된 구글 스프레드시트 URL이 없습니다.", "error");
+                }
                 return;
             }
 
@@ -383,7 +396,7 @@
                                     grade: String(item.grade || ''),
                                     cls: String(item.cls || ''),
                                     name: String(item.name || ''),
-                                    times: item.times // [t1, t2, t3]
+                                    times: item.times
                                 });
                             });
                         }
@@ -429,7 +442,7 @@
                             const cls = String(r[1] || '-');
                             const name = String(r[2] || '');
                             const key = `${grade}_${cls}_${name}`;
-                            finalRowsMap.set(key, [r[3], r[4], r[5], r[6]]); // 학년, 반, 이름, 1R-1, 1R-2, 2R-1, 2R-2
+                            finalRowsMap.set(key, [r[3], r[4], r[5], r[6]]); // 학년, 반, 이름, 1R-1차, 1R-2차, 2R-1차, 2R-2차
                         }
                     }
                 }
@@ -488,12 +501,16 @@
                 document.getElementById('lastSyncTime').innerText = new Date().toLocaleTimeString();
                 renderTables();
 
-                refreshIcon.classList.remove('fa-spin');
-                showStatus("소사벌초 스프레드시트 동기화 완료!", "success");
+                if (!isBackground) {
+                    refreshIcon.classList.remove('fa-spin');
+                    showStatus("소사벌초 스프레드시트 동기화 완료!", "success");
+                }
             } catch (error) {
                 console.error(error);
-                refreshIcon.classList.remove('fa-spin');
-                showStatus("스프레드시트 연동 실패 (URL 또는 웹에 게시 설정을 확인하세요).", "error");
+                if (!isBackground) {
+                    refreshIcon.classList.remove('fa-spin');
+                    showStatus("스프레드시트 연동 실패 (URL 또는 웹에 게시 설정을 확인하세요).", "error");
+                }
             }
         }
 
@@ -611,10 +628,10 @@
                         <td class="py-3.5 px-4 text-center text-slate-300 font-medium whitespace-nowrap">${p.grade}</td>
                         <td class="py-3.5 px-4 text-center text-slate-300 font-medium whitespace-nowrap">${p.cls}</td>
                         <td class="py-3.5 px-6 font-bold text-slate-100 whitespace-nowrap">${p.name}</td>
-                        <td class="py-3.5 px-4 text-center font-mono text-xs">${formatTime(p.preliminary[0])}</td>
-                        <td class="py-3.5 px-4 text-center font-mono text-xs">${formatTime(p.preliminary[1])}</td>
-                        <td class="py-3.5 px-4 text-center font-mono text-xs">${formatTime(p.preliminary[2])}</td>
-                        <td class="py-3.5 px-4 text-center font-mono font-bold text-blue-300 bg-blue-950/20">${formatTime(p.preliminaryBest)}</td>
+                        <td class="py-3.5 px-4 text-center text-slate-200 font-bold whitespace-nowrap">${formatTime(p.preliminary[0])}</td>
+                        <td class="py-3.5 px-4 text-center text-slate-200 font-bold whitespace-nowrap">${formatTime(p.preliminary[1])}</td>
+                        <td class="py-3.5 px-4 text-center text-slate-200 font-bold whitespace-nowrap">${formatTime(p.preliminary[2])}</td>
+                        <td class="py-3.5 px-4 text-center font-bold text-blue-300 bg-blue-950/20 whitespace-nowrap">${formatTime(p.preliminaryBest)}</td>
                     `;
                     prelimBody.appendChild(tr);
                 });
@@ -648,11 +665,11 @@
                         <td class="py-3.5 px-4 text-center text-slate-300 font-medium whitespace-nowrap">${p.grade}</td>
                         <td class="py-3.5 px-4 text-center text-slate-300 font-medium whitespace-nowrap">${p.cls}</td>
                         <td class="py-3.5 px-6 font-bold text-slate-100 whitespace-nowrap">${p.name}</td>
-                        <td class="py-3.5 px-3 text-center font-mono text-xs">${formatTime(p.final[0])}</td>
-                        <td class="py-3.5 px-3 text-center font-mono text-xs">${formatTime(p.final[1])}</td>
-                        <td class="py-3.5 px-3 text-center font-mono text-xs">${formatTime(p.final[2])}</td>
-                        <td class="py-3.5 px-3 text-center font-mono text-xs">${formatTime(p.final[3])}</td>
-                        <td class="py-3.5 px-4 text-center font-mono font-bold text-amber-300 bg-amber-950/20">${formatTime(p.finalBest)}</td>
+                        <td class="py-3.5 px-3 text-center text-slate-200 font-bold whitespace-nowrap">${formatTime(p.final[0])}</td>
+                        <td class="py-3.5 px-3 text-center text-slate-200 font-bold whitespace-nowrap">${formatTime(p.final[1])}</td>
+                        <td class="py-3.5 px-3 text-center text-slate-200 font-bold whitespace-nowrap">${formatTime(p.final[2])}</td>
+                        <td class="py-3.5 px-3 text-center text-slate-200 font-bold whitespace-nowrap">${formatTime(p.final[3])}</td>
+                        <td class="py-3.5 px-4 text-center font-bold text-amber-300 bg-amber-950/20 whitespace-nowrap">${formatTime(p.finalBest)}</td>
                         <td class="py-3.5 px-4 text-center">${medalBadge}</td>
                     `;
                     finalBody.appendChild(tr);
